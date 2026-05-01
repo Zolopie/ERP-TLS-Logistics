@@ -24,8 +24,13 @@ export const Layout = ({ children }: { children: ReactNode }) => {
     <div className="flex min-h-screen bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col fixed h-screen">
         <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-bold">TLS Logistics </h1>
-          <p className="text-sm text-sidebar-muted mt-1">Erp System</p>
+          <div className="flex items-center gap-3">
+            <img src="/tls-logo.png" alt="TLS Logistics" className="w-10 h-10 object-contain rounded-lg bg-white/90 p-1" />
+            <div>
+              <h1 className="text-xl font-bold">TLS Logistics</h1>
+              <p className="text-sm text-sidebar-muted mt-1">ERP System</p>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label }) => (

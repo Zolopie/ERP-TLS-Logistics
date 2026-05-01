@@ -51,6 +51,7 @@ CREATE TABLE public.purchase_orders (
   supplier_id UUID REFERENCES public.suppliers(id) ON DELETE SET NULL,
   supplier_name TEXT NOT NULL,
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
   items_count INT NOT NULL DEFAULT 0,
   total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'Pending',
