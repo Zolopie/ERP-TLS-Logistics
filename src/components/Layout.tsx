@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Truck, ShoppingBag, ShoppingCart, FileText, Settings as SettingsIcon, LogOut, Bell, Search, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -23,8 +24,8 @@ export const Layout = ({ children }: { children: ReactNode }) => {
     <div className="flex min-h-screen bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col fixed h-screen">
         <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-bold">ERP System</h1>
-          <p className="text-sm text-sidebar-muted mt-1">For SMEs</p>
+          <h1 className="text-xl font-bold">TLS Logistics </h1>
+          <p className="text-sm text-sidebar-muted mt-1">Erp System</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label }) => (
@@ -47,7 +48,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
           ))}
         </nav>
         <div className="p-4 border-t border-sidebar-border text-xs text-sidebar-muted text-center">
-          © 2024 ERP System
+          © 2026 TLS Logistics
         </div>
       </aside>
 
@@ -66,18 +67,23 @@ export const Layout = ({ children }: { children: ReactNode }) => {
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-semibold">{user?.email?.split("@")[0]}</p>
-                <p className="text-xs text-muted-foreground">{isAdmin ? "Admin" : "User"}</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                <UserIcon className="w-5 h-5" />
-              </div>
-            </div>
-            <Button variant="outline" onClick={signOut} className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">
-              <LogOut className="w-4 h-4 mr-2" />Logout
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-3 rounded-full p-1 hover:bg-secondary transition-colors">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">{user?.email?.split("@")[0]}</p>
+                    <p className="text-xs text-muted-foreground">{isAdmin ? "Admin" : "User"}</p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <UserIcon className="w-5 h-5" />
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => navigate("/settings")}> <SettingsIcon className="mr-2 h-4 w-4" />Settings</DropdownMenuItem>
+                <DropdownMenuItem onSelect={signOut}> <LogOut className="mr-2 h-4 w-4" />Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 p-6">{children}</main>

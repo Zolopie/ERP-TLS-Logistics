@@ -21,6 +21,15 @@ const SalesOrders = () => {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<SO | null>(null);
   const [form, setForm] = useState({ order_number: "", customer_name: "", order_date: new Date().toISOString().slice(0, 10), items_count: 1, total_amount: 0, status: "Pending" });
+  const statuses = ["Pending", "Processing", "Shipped", "Completed"];
+
+  const updateStatus = async (id: string, status: string) => {
+    if (!isAdmin) return toast.error("Admin access required");
+    const { error } = await supabase.from("sales_orders").update({ status }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Order status updated");
+    load();
+  };
 
   const load = async () => {
     const { data } = await supabase.from("sales_orders").select("*").order("created_at", { ascending: false });
@@ -77,7 +86,21 @@ const SalesOrders = () => {
                 <td className="px-5 py-4">{o.order_date}</td>
                 <td className="px-5 py-4">{o.items_count}</td>
                 <td className="px-5 py-4 font-semibold">${Number(o.total_amount).toFixed(2)}</td>
-                <td className="px-5 py-4"><StatusBadge status={o.status} /></td>
+                <td className="px-5 py-4">
+                  {isAdmin ? (
+                    <select
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={o.status}
+                      onChange={(e) => updateStatus(o.id, e.target.value)}
+                    >
+                      {statuses.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <StatusBadge status={o.status} />
+                  )}
+                </td>
                 <td className="px-5 py-4">
                   <div className="flex gap-3">
                     <button onClick={() => setDetails(o)} className="text-primary hover:underline text-xs">View Details</button>

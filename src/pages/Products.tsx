@@ -13,14 +13,18 @@ import { toast } from "sonner";
 interface Product {
   id: string; name: string; sku: string; category: string;
   current_stock: number; min_stock: number; price: number;
+  supplier_id: string | null;
 }
 
-const empty = { name: "", sku: "", category: "", current_stock: 0, min_stock: 0, price: 0 };
+interface SupplierOption { id: string; name: string; }
+
+const empty = { name: "", sku: "", category: "", current_stock: 0, min_stock: 0, price: 0, supplier_id: null };
 
 const Products = () => {
   const { isAdmin } = useAuth();
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState<Product | null>(null);
@@ -29,8 +33,12 @@ const Products = () => {
   const [form, setForm] = useState(empty);
 
   const load = async () => {
-    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-    setProducts(data || []);
+    const [{ data: productsData }, { data: suppliersData }] = await Promise.all([
+      supabase.from("products").select("*").order("created_at", { ascending: false }),
+      supabase.from("suppliers").select("id,name").order("name"),
+    ]);
+    setProducts(productsData || []);
+    setSuppliers(suppliersData || []);
   };
   useEffect(() => { load(); }, []);
 
@@ -42,7 +50,7 @@ const Products = () => {
   }, [params, setParams]);
 
   const filtered = products.filter((p) =>
-    [p.name, p.sku, p.category].some((s) => s.toLowerCase().includes(search.toLowerCase()))
+    [p.name, p.sku, p.category, p.supplier_id ? suppliers.find((s) => s.id === p.supplier_id)?.name ?? "" : ""].some((s) => s.toLowerCase().includes(search.toLowerCase()))
   );
 
   const requireAdmin = () => { if (!isAdmin) { toast.error("Admin access required"); return false; } return true; };
@@ -78,8 +86,11 @@ const Products = () => {
   };
 
   const exportCsv = () => {
-    const rows = [["Name", "SKU", "Category", "Current Stock", "Min Stock", "Price"]];
-    filtered.forEach((p) => rows.push([p.name, p.sku, p.category, String(p.current_stock), String(p.min_stock), String(p.price)]));
+    const rows = [["Name", "SKU", "Category", "Supplier", "Current Stock", "Min Stock", "Price"]];
+    filtered.forEach((p) => {
+      const supplierName = p.supplier_id ? suppliers.find((s) => s.id === p.supplier_id)?.name ?? "Unknown" : "Unassigned";
+      rows.push([p.name, p.sku, p.category, supplierName, String(p.current_stock), String(p.min_stock), String(p.price)]);
+    });
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -110,7 +121,7 @@ const Products = () => {
         <table className="w-full text-sm">
           <thead className="bg-secondary text-muted-foreground">
             <tr>
-              {["Product Name", "SKU", "Category", "Current Stock", "Min Stock", "Price", "Status", "Actions"].map((h) => (
+              {["Product Name", "SKU", "Category", "Supplier", "Current Stock", "Min Stock", "Price", "Status", "Actions"].map((h) => (
                 <th key={h} className="text-left px-5 py-3 font-medium">{h}</th>
               ))}
             </tr>
@@ -127,6 +138,7 @@ const Products = () => {
                   </td>
                   <td className="px-5 py-4">{p.sku}</td>
                   <td className="px-5 py-4">{p.category}</td>
+                  <td className="px-5 py-4">{p.supplier_id ? suppliers.find((s) => s.id === p.supplier_id)?.name ?? "Unknown" : "Unassigned"}</td>
                   <td className={`px-5 py-4 font-semibold ${stockColor}`}>{p.current_stock}</td>
                   <td className="px-5 py-4">{p.min_stock}</td>
                   <td className="px-5 py-4">${Number(p.price).toFixed(2)}</td>
@@ -136,7 +148,7 @@ const Products = () => {
                       <button onClick={() => { setStockOpen(p); setStockValue(p.current_stock); }} className="text-primary hover:underline flex items-center gap-1 text-xs">
                         <RefreshCw className="w-3 h-3" />Update Stock
                       </button>
-                      <button onClick={() => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, current_stock: p.current_stock, min_stock: p.min_stock, price: p.price }); setOpen(true); }} className="text-muted-foreground hover:text-foreground"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, current_stock: p.current_stock, min_stock: p.min_stock, price: p.price, supplier_id: p.supplier_id }); setOpen(true); }} className="text-muted-foreground hover:text-foreground"><Pencil className="w-4 h-4" /></button>
                       <button onClick={() => remove(p.id)} className="text-destructive hover:opacity-70"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
@@ -144,7 +156,7 @@ const Products = () => {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">No products found</td></tr>
+              <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">No products found</td></tr>
             )}
           </tbody>
         </table>
@@ -157,6 +169,18 @@ const Products = () => {
             <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div><Label>SKU *</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
             <div><Label>Category *</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
+            <div><Label>Supplier</Label>
+              <select
+                className="w-full h-10 px-3 border border-input rounded-md bg-background"
+                value={form.supplier_id || ""}
+                onChange={(e) => setForm({ ...form, supplier_id: e.target.value || null })}
+              >
+                <option value="">Unassigned</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Current Stock</Label><Input type="number" value={form.current_stock} onChange={(e) => setForm({ ...form, current_stock: +e.target.value })} /></div>
               <div><Label>Min Stock</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: +e.target.value })} /></div>

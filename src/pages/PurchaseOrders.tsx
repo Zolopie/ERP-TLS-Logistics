@@ -11,24 +11,36 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "sonner";
 
 interface PO {
-  id: string; order_number: string; supplier_name: string; order_date: string;
+  id: string; order_number: string; supplier_id: string | null; supplier_name: string; order_date: string;
   items_count: number; total_amount: number; status: string;
 }
+
+interface SupplierOption { id: string; name: string; }
 
 const PurchaseOrders = () => {
   const { isAdmin } = useAuth();
   const [params, setParams] = useSearchParams();
   const [list, setList] = useState<PO[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<PO | null>(null);
-  const [form, setForm] = useState({ order_number: "", supplier_name: "", order_date: new Date().toISOString().slice(0, 10), items_count: 1, total_amount: 0, status: "Pending" });
+  const [form, setForm] = useState({ order_number: "", supplier_id: null as string | null, supplier_name: "", order_date: new Date().toISOString().slice(0, 10), items_count: 1, total_amount: 0, status: "Pending" });
 
   const load = async () => {
-    const { data } = await supabase.from("purchase_orders").select("*").order("created_at", { ascending: false });
-    setList(data || []);
+    const [purchaseRes, supplierRes] = await Promise.all([
+      supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("suppliers").select("id,name").order("name"),
+    ]);
+    setList(purchaseRes.data || []);
+    setSuppliers(supplierRes.data || []);
   };
   useEffect(() => { load(); }, []);
+
+  const generateOrderNumber = () => {
+    const now = new Date();
+    return `PO-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
+  };
 
   useEffect(() => {
     if (params.get("action") === "add") {
@@ -36,17 +48,23 @@ const PurchaseOrders = () => {
     }
   }, [params, setParams]);
 
+  useEffect(() => {
+    if (open && !form.order_number) {
+      setForm((prev) => ({ ...prev, order_number: generateOrderNumber() }));
+    }
+  }, [open]);
+
   const filtered = list.filter((o) =>
     [o.order_number, o.supplier_name, o.order_date].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
   );
 
   const create = async () => {
     if (!isAdmin) return toast.error("Admin access required");
-    if (!form.order_number || !form.supplier_name) return toast.error("Order number and supplier required");
+    if (!form.order_number || !form.supplier_id || !form.supplier_name) return toast.error("Order number and supplier required");
     const { error } = await supabase.from("purchase_orders").insert(form);
     if (error) return toast.error(error.message);
     toast.success("Purchase order created"); setOpen(false); load();
-    setForm({ order_number: "", supplier_name: "", order_date: new Date().toISOString().slice(0, 10), items_count: 1, total_amount: 0, status: "Pending" });
+    setForm({ order_number: "", supplier_id: null, supplier_name: "", order_date: new Date().toISOString().slice(0, 10), items_count: 1, total_amount: 0, status: "Pending" });
   };
 
   const remove = async (id: string) => {
@@ -104,7 +122,21 @@ const PurchaseOrders = () => {
           <DialogHeader><DialogTitle>Create Purchase Order</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Order Number *</Label><Input value={form.order_number} onChange={(e) => setForm({ ...form, order_number: e.target.value })} placeholder="PO-2024-006" /></div>
-            <div><Label>Supplier *</Label><Input value={form.supplier_name} onChange={(e) => setForm({ ...form, supplier_name: e.target.value })} /></div>
+            <div><Label>Supplier *</Label>
+              <select
+                className="w-full h-10 px-3 border border-input rounded-md bg-background"
+                value={form.supplier_id || ""}
+                onChange={(e) => {
+                  const supplier = suppliers.find((s) => s.id === e.target.value);
+                  setForm({ ...form, supplier_id: supplier?.id ?? null, supplier_name: supplier?.name ?? "" });
+                }}
+              >
+                <option value="">Select supplier...</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Date</Label><Input type="date" value={form.order_date} onChange={(e) => setForm({ ...form, order_date: e.target.value })} /></div>
               <div><Label>Status</Label>

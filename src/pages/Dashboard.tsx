@@ -44,10 +44,10 @@ const Dashboard = () => {
   }, []);
 
   const cards = [
-    { label: "Total Products", value: stats.products, icon: Package, color: "bg-blue-100 text-blue-600", change: "+12%", changeColor: "text-blue-600" },
-    { label: "Total Suppliers", value: stats.suppliers, icon: Users, color: "bg-green-100 text-green-600", change: "+5%", changeColor: "text-green-600" },
-    { label: "Pending Orders", value: stats.pending, icon: ShoppingCart, color: "bg-orange-100 text-orange-600", change: "-8%", changeColor: "text-orange-600" },
-    { label: "Low Stock Items", value: stats.lowStock, icon: AlertTriangle, color: "bg-red-100 text-red-600", change: `+${stats.lowStock}`, changeColor: "text-red-600" },
+    { label: "Total Products", value: stats.products, icon: Package, color: "bg-blue-100 text-blue-600", change: "+12%", changeColor: "text-blue-600", to: "/products" },
+    { label: "Total Suppliers", value: stats.suppliers, icon: Users, color: "bg-green-100 text-green-600", change: "+5%", changeColor: "text-green-600", to: "/suppliers" },
+    { label: "Pending Orders", value: stats.pending, icon: ShoppingCart, color: "bg-orange-100 text-orange-600", change: "-8%", changeColor: "text-orange-600", to: "/purchase-orders" },
+    { label: "Low Stock Items", value: stats.lowStock, icon: AlertTriangle, color: "bg-red-100 text-red-600", change: `+${stats.lowStock}`, changeColor: "text-red-600", to: "/products" },
   ];
 
   return (
@@ -60,7 +60,12 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {cards.map((c) => (
-          <div key={c.label} className="bg-card rounded-xl p-5 border border-border shadow-sm">
+          <button
+            key={c.label}
+            type="button"
+            onClick={() => navigate(c.to)}
+            className="bg-card rounded-xl p-5 border border-border shadow-sm text-left transition hover:bg-secondary/50"
+          >
             <div className="flex items-start justify-between">
               <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${c.color}`}>
                 <c.icon className="w-5 h-5" />
@@ -69,7 +74,7 @@ const Dashboard = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-4">{c.label}</p>
             <p className="text-3xl font-bold mt-1">{c.value.toLocaleString()}</p>
-          </div>
+          </button>
         ))}
       </div>
 
