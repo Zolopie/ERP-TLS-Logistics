@@ -80,6 +80,11 @@ const Auth = () => {
               ? "Welcome to TLS Portal"
               : "Create your account"}
           </p>
+            <p className="text-slate-500 mt-2">
+            {mode === "signin"
+              ? "email: admin@test.com / password: testaccount?"
+              : "Create your account"}
+          </p>
         </div>
 
         {/* FORM */}
