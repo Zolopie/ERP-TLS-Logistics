@@ -65,7 +65,7 @@ const Suppliers = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Truck className="w-7 h-7 text-primary" />Suppliers Management</h1>
           <p className="text-muted-foreground mt-1">Manage your supplier relationships and contacts</p>
         </div>
-        <Button onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
+        {isAdmin && <Button onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>}
       </div>
 
       <div className="flex gap-3">
@@ -96,8 +96,8 @@ const Suppliers = () => {
             </div>
             <div className="flex gap-2 mt-4">
               <Button variant="secondary" className="flex-1" onClick={() => setDetails(s)}>View Details</Button>
-              <Button variant="outline" size="icon" onClick={() => { setEditing(s); setForm(s); setOpen(true); }}>✎</Button>
-              <Button variant="outline" size="icon" onClick={() => remove(s.id)}><Trash2 className="w-4 h-4" /></Button>
+              {isAdmin && <Button variant="outline" size="icon" onClick={() => { setEditing(s); setForm(s); setOpen(true); }}>✎</Button>}
+              {isAdmin && <Button variant="outline" size="icon" onClick={() => remove(s.id)}><Trash2 className="w-4 h-4" /></Button>}
             </div>
           </div>
         ))}
