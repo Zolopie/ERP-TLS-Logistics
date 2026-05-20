@@ -92,8 +92,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          items: Json | null
           items_count: number
-          items: { product_id: string; name: string; quantity: number; unit_price: number }[]
           order_date: string
           order_number: string
           status: string
@@ -105,8 +105,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          items?: Json | null
           items_count?: number
-          items?: { product_id: string; name: string; quantity: number; unit_price: number }[]
           order_date?: string
           order_number: string
           status?: string
@@ -118,8 +118,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          items?: Json | null
           items_count?: number
-          items?: { product_id: string; name: string; quantity: number; unit_price: number }[]
           order_date?: string
           order_number?: string
           status?: string
