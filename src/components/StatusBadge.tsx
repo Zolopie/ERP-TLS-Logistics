@@ -4,6 +4,8 @@ const map: Record<string, string> = {
   Active: "bg-[hsl(var(--status-active-bg))] text-[hsl(var(--status-active-fg))]",
   Inactive: "bg-[hsl(var(--status-inactive-bg))] text-[hsl(var(--status-inactive-fg))]",
   Pending: "bg-[hsl(var(--status-pending-bg))] text-[hsl(var(--status-pending-fg))]",
+  "Pending Approval": "bg-[hsl(var(--status-pending-bg))] text-[hsl(var(--status-pending-fg))]",
+  Rejected: "bg-[hsl(var(--status-critical-bg))] text-[hsl(var(--status-critical-fg))]",
   Approved: "bg-[hsl(var(--status-approved-bg))] text-[hsl(var(--status-approved-fg))]",
   Delivered: "bg-[hsl(var(--status-delivered-bg))] text-[hsl(var(--status-delivered-fg))]",
   Completed: "bg-[hsl(var(--status-completed-bg))] text-[hsl(var(--status-completed-fg))]",

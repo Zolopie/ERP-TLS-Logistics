@@ -108,7 +108,7 @@ const Products = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4 mr-2" />Export</Button>
-          <Button onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Product</Button>
+          {isAdmin && <Button onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Product</Button>}
         </div>
       </div>
 
@@ -144,13 +144,17 @@ const Products = () => {
                   <td className="px-5 py-4">${Number(p.price).toFixed(2)}</td>
                   <td className="px-5 py-4"><StatusBadge status={status} /></td>
                   <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <button onClick={() => { setStockOpen(p); setStockValue(p.current_stock); }} className="text-primary hover:underline flex items-center gap-1 text-xs">
-                        <RefreshCw className="w-3 h-3" />Update Stock
-                      </button>
-                      <button onClick={() => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, current_stock: p.current_stock, min_stock: p.min_stock, price: p.price, supplier_id: p.supplier_id }); setOpen(true); }} className="text-muted-foreground hover:text-foreground"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => remove(p.id)} className="text-destructive hover:opacity-70"><Trash2 className="w-4 h-4" /></button>
-                    </div>
+                    {isAdmin ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => { setStockOpen(p); setStockValue(p.current_stock); }} className="text-primary hover:underline flex items-center gap-1 text-xs">
+                          <RefreshCw className="w-3 h-3" />Update Stock
+                        </button>
+                        <button onClick={() => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, current_stock: p.current_stock, min_stock: p.min_stock, price: p.price, supplier_id: p.supplier_id }); setOpen(true); }} className="text-muted-foreground hover:text-foreground"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => remove(p.id)} className="text-destructive hover:opacity-70"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">View only</span>
+                    )}
                   </td>
                 </tr>
               );
