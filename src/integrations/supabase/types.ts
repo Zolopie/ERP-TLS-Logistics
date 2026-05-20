@@ -91,7 +91,10 @@ export type Database = {
       purchase_orders: {
         Row: {
           created_at: string
+          created_by: string | null
+          description: string | null
           id: string
+          is_open_to_all: boolean
           items: Json | null
           items_count: number
           order_date: string
@@ -104,7 +107,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
+          description?: string | null
           id?: string
+          is_open_to_all?: boolean
           items?: Json | null
           items_count?: number
           order_date?: string
@@ -117,7 +123,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
+          description?: string | null
           id?: string
+          is_open_to_all?: boolean
           items?: Json | null
           items_count?: number
           order_date?: string
@@ -141,38 +150,55 @@ export type Database = {
       sales_orders: {
         Row: {
           created_at: string
+          created_by: string | null
           customer_name: string
           id: string
           items_count: number
           order_date: string
           order_number: string
+          purchase_order_id: string | null
           status: string
+          supplier_name: string | null
           total_amount: number
           updated_at: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           customer_name: string
           id?: string
           items_count?: number
           order_date?: string
           order_number: string
+          purchase_order_id?: string | null
           status?: string
+          supplier_name?: string | null
           total_amount?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           customer_name?: string
           id?: string
           items_count?: number
           order_date?: string
           order_number?: string
+          purchase_order_id?: string | null
           status?: string
+          supplier_name?: string | null
           total_amount?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
