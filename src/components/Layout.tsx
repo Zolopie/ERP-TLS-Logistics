@@ -1,24 +1,48 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Truck, ShoppingBag, ShoppingCart, FileText, Settings as SettingsIcon, LogOut, Bell, Search, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/products", icon: Package, label: "Products" },
-  { to: "/suppliers", icon: Truck, label: "Suppliers" },
-  { to: "/purchase-orders", icon: ShoppingBag, label: "Purchase Orders" },
-  { to: "/sales-orders", icon: ShoppingCart, label: "Sales Orders" },
-  { to: "/reports", icon: FileText, label: "Reports" },
-  { to: "/settings", icon: SettingsIcon, label: "Settings" },
+const allNav = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
+  { to: "/products", icon: Package, label: "Products", adminOnly: false },
+  { to: "/suppliers", icon: Truck, label: "Suppliers", adminOnly: false },
+  { to: "/purchase-orders", icon: ShoppingBag, label: "Purchase Orders", adminOnly: false },
+  { to: "/sales-orders", icon: ShoppingCart, label: "Sales Orders", adminOnly: false },
+  { to: "/reports", icon: FileText, label: "Reports", adminOnly: true },
+  { to: "/settings", icon: SettingsIcon, label: "Settings", adminOnly: true },
 ];
+
+interface PendingPO { id: string; order_number: string; supplier_name: string; created_at: string; }
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const [pending, setPending] = useState<PendingPO[]>([]);
+
+  const nav = allNav.filter((n) => !n.adminOnly || isAdmin);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("purchase_orders")
+        .select("id,order_number,supplier_name,created_at")
+        .eq("status", "Pending Approval")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      setPending(data || []);
+    };
+    load();
+    const channel = supabase
+      .channel("po-pending")
+      .on("postgres_changes", { event: "*", schema: "public", table: "purchase_orders" }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin]);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -41,9 +65,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-active text-sidebar-active-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-border"
+                  isActive ? "bg-sidebar-active text-sidebar-active-foreground" : "text-sidebar-foreground hover:bg-sidebar-border"
                 )
               }
             >
@@ -68,10 +90,32 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             />
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 hover:bg-secondary rounded-lg transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="relative p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Bell className="w-5 h-5" />
+                  {isAdmin && pending.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
+                      {pending.length}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {!isAdmin && <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>}
+                {isAdmin && pending.length === 0 && <DropdownMenuItem disabled>No pending approvals</DropdownMenuItem>}
+                {isAdmin && pending.map((p) => (
+                  <DropdownMenuItem key={p.id} onSelect={() => navigate("/purchase-orders")}>
+                    <div>
+                      <p className="text-sm font-medium">New purchase order submitted</p>
+                      <p className="text-xs text-muted-foreground">{p.order_number} · {p.supplier_name}</p>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-full p-1 hover:bg-secondary transition-colors">
@@ -85,8 +129,8 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => navigate("/settings")}> <SettingsIcon className="mr-2 h-4 w-4" />Settings</DropdownMenuItem>
-                <DropdownMenuItem onSelect={signOut}> <LogOut className="mr-2 h-4 w-4" />Logout</DropdownMenuItem>
+                {isAdmin && <DropdownMenuItem onSelect={() => navigate("/settings")}><SettingsIcon className="mr-2 h-4 w-4" />Settings</DropdownMenuItem>}
+                <DropdownMenuItem onSelect={signOut}><LogOut className="mr-2 h-4 w-4" />Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -1,64 +1,103 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Package, Users, ShoppingCart, AlertTriangle, Plus, FileBarChart, ArrowUpRight } from "lucide-react";
+import { Package, Users, ShoppingCart, AlertTriangle, Plus, FileBarChart, ShoppingBag, Clock, DollarSign } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, stockStatus } from "@/components/StatusBadge";
 
 interface LowStock { id: string; name: string; current_stock: number; min_stock: number }
 
-const trendData = [
-  { month: "Jan", purchase: 45, sales: 52 },
-  { month: "Feb", purchase: 52, sales: 58 },
-  { month: "Mar", purchase: 48, sales: 55 },
-  { month: "Apr", purchase: 61, sales: 65 },
-  { month: "May", purchase: 55, sales: 63 },
-  { month: "Jun", purchase: 67, sales: 72 },
-  { month: "Jul", purchase: 70, sales: 78 },
-  { month: "Aug", purchase: 68, sales: 75 },
-  { month: "Sep", purchase: 75, sales: 82 },
-  { month: "Oct", purchase: 80, sales: 88 },
-  { month: "Nov", purchase: 85, sales: 92 },
-  { month: "Dec", purchase: 90, sales: 98 },
-];
-
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ products: 0, suppliers: 0, pending: 0, lowStock: 0 });
+  const { isAdmin, user } = useAuth();
+  const [stats, setStats] = useState({
+    products: 0, suppliers: 0, totalPO: 0, pending: 0, salesOrders: 0,
+    revenue: 0, myOrders: 0, lowStock: 0,
+  });
   const [lowStockItems, setLowStockItems] = useState<LowStock[]>([]);
+  const [trend, setTrend] = useState<{ month: string; purchase: number; sales: number }[]>([]);
 
   useEffect(() => {
+    if (!user) return;
     const load = async () => {
-      const [{ count: products }, { count: suppliers }, { count: pending }, { data: low }] = await Promise.all([
+      const [
+        { count: products },
+        { count: suppliers },
+        { count: totalPO },
+        { count: pending },
+        { count: salesOrders },
+        { data: revenueRows },
+        { count: myOrders },
+        { data: low },
+        { data: poByMonth },
+        { data: soByMonth },
+      ] = await Promise.all([
         supabase.from("products").select("*", { count: "exact", head: true }),
         supabase.from("suppliers").select("*", { count: "exact", head: true }),
-        supabase.from("purchase_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+        supabase.from("purchase_orders").select("*", { count: "exact", head: true }),
+        supabase.from("purchase_orders").select("*", { count: "exact", head: true }).eq("status", "Pending Approval"),
+        supabase.from("sales_orders").select("*", { count: "exact", head: true }),
+        supabase.from("sales_orders").select("total_amount"),
+        supabase.from("purchase_orders").select("*", { count: "exact", head: true }).eq("created_by", user.id),
         supabase.from("products").select("id,name,current_stock,min_stock").order("current_stock"),
+        supabase.from("purchase_orders").select("order_date"),
+        supabase.from("sales_orders").select("order_date"),
       ]);
       const lowItems = (low || []).filter((p) => p.current_stock < p.min_stock);
-      setStats({ products: products || 0, suppliers: suppliers || 0, pending: pending || 0, lowStock: lowItems.length });
+      const revenue = (revenueRows || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+      setStats({
+        products: products || 0, suppliers: suppliers || 0,
+        totalPO: totalPO || 0, pending: pending || 0,
+        salesOrders: salesOrders || 0, revenue,
+        myOrders: myOrders || 0, lowStock: lowItems.length,
+      });
       setLowStockItems(lowItems);
+
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const buckets: Record<string, { purchase: number; sales: number }> = {};
+      months.forEach((m) => (buckets[m] = { purchase: 0, sales: 0 }));
+      (poByMonth || []).forEach((r: any) => { const m = months[new Date(r.order_date).getMonth()]; if (m) buckets[m].purchase += 1; });
+      (soByMonth || []).forEach((r: any) => { const m = months[new Date(r.order_date).getMonth()]; if (m) buckets[m].sales += 1; });
+      setTrend(months.map((m) => ({ month: m, ...buckets[m] })));
     };
     load();
-  }, []);
+  }, [user]);
 
-  const cards = [
-    { label: "Total Products", value: stats.products, icon: Package, color: "bg-blue-100 text-blue-600", change: "+12%", changeColor: "text-blue-600", to: "/products" },
-    { label: "Total Suppliers", value: stats.suppliers, icon: Users, color: "bg-green-100 text-green-600", change: "+5%", changeColor: "text-green-600", to: "/suppliers" },
-    { label: "Pending Orders", value: stats.pending, icon: ShoppingCart, color: "bg-orange-100 text-orange-600", change: "-8%", changeColor: "text-orange-600", to: "/purchase-orders" },
-    { label: "Low Stock Items", value: stats.lowStock, icon: AlertTriangle, color: "bg-red-100 text-red-600", change: `+${stats.lowStock}`, changeColor: "text-red-600", to: "/products" },
+  const adminCards = [
+    { label: "Total Products", value: stats.products, icon: Package, color: "bg-blue-100 text-blue-600", to: "/products" },
+    { label: "Total Suppliers", value: stats.suppliers, icon: Users, color: "bg-green-100 text-green-600", to: "/suppliers" },
+    { label: "Purchase Orders", value: stats.totalPO, icon: ShoppingBag, color: "bg-indigo-100 text-indigo-600", to: "/purchase-orders" },
+    { label: "Pending Approvals", value: stats.pending, icon: Clock, color: "bg-orange-100 text-orange-600", to: "/purchase-orders" },
+    { label: "Sales Orders", value: stats.salesOrders, icon: ShoppingCart, color: "bg-purple-100 text-purple-600", to: "/sales-orders" },
+    { label: "Revenue", value: `$${stats.revenue.toFixed(2)}`, icon: DollarSign, color: "bg-emerald-100 text-emerald-600", to: "/reports" },
   ];
+
+  const userCards = [
+    { label: "My Orders", value: stats.myOrders, icon: ShoppingBag, color: "bg-blue-100 text-blue-600", to: "/purchase-orders" },
+    { label: "Sales Orders", value: stats.salesOrders, icon: ShoppingCart, color: "bg-purple-100 text-purple-600", to: "/sales-orders" },
+    { label: "Products Available", value: stats.products, icon: Package, color: "bg-green-100 text-green-600", to: "/products" },
+    { label: "Suppliers Available", value: stats.suppliers, icon: Users, color: "bg-orange-100 text-orange-600", to: "/suppliers" },
+  ];
+
+  const cards = isAdmin ? adminCards : userCards;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => navigate("/products?action=add")}><Plus className="w-4 h-4 mr-2" />Add Product</Button>
-        <Button variant="outline" onClick={() => navigate("/purchase-orders?action=add")}><Plus className="w-4 h-4 mr-2" />Create Purchase Order</Button>
-        <Button variant="outline" onClick={() => navigate("/reports")}><FileBarChart className="w-4 h-4 mr-2" />View Reports</Button>
+        {isAdmin && (
+          <Button onClick={() => navigate("/products?action=add")}><Plus className="w-4 h-4 mr-2" />Add Product</Button>
+        )}
+        <Button variant={isAdmin ? "outline" : "default"} onClick={() => navigate("/purchase-orders?action=add")}>
+          <Plus className="w-4 h-4 mr-2" />Create Purchase Order
+        </Button>
+        {isAdmin && (
+          <Button variant="outline" onClick={() => navigate("/reports")}><FileBarChart className="w-4 h-4 mr-2" />View Reports</Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-4"} gap-5`}>
         {cards.map((c) => (
           <button
             key={c.label}
@@ -70,10 +109,9 @@ const Dashboard = () => {
               <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${c.color}`}>
                 <c.icon className="w-5 h-5" />
               </div>
-              <span className={`text-sm font-semibold ${c.changeColor}`}>{c.change}</span>
             </div>
             <p className="text-sm text-muted-foreground mt-4">{c.label}</p>
-            <p className="text-3xl font-bold mt-1">{c.value.toLocaleString()}</p>
+            <p className="text-3xl font-bold mt-1">{typeof c.value === "number" ? c.value.toLocaleString() : c.value}</p>
           </button>
         ))}
       </div>
@@ -83,7 +121,7 @@ const Dashboard = () => {
           <h3 className="text-lg font-semibold">Order Trends</h3>
           <p className="text-sm text-muted-foreground mb-4">Monthly comparison of purchase and sales orders</p>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={trendData}>
+            <LineChart data={trend}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -101,10 +139,10 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold">Low Stock Alert</h3>
           </div>
           <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
-            {lowStockItems.length === 0 && <p className="text-sm text-muted-foreground">All products in stock 🎉</p>}
+            {lowStockItems.length === 0 && <p className="text-sm text-muted-foreground">All products in stock</p>}
             {lowStockItems.map((p) => {
               const status = stockStatus(p.current_stock, p.min_stock);
-              const pct = Math.min((p.current_stock / p.min_stock) * 100, 100);
+              const pct = Math.min((p.current_stock / Math.max(p.min_stock, 1)) * 100, 100);
               return (
                 <button
                   key={p.id}
