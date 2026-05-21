@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+
+
+const DEMO = {
+  admin: { email: "admin@tlslogistics.com", password: "Admin123" },
+  user: { email: "user@tlslogistics.com", password: "User123" },
+};
+
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
